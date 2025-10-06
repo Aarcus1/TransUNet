@@ -7,7 +7,7 @@ import copy
 import logging
 import math
 
-from os.path import join as pjoin
+import os
 
 import torch
 import torch.nn as nn
@@ -19,6 +19,9 @@ from scipy import ndimage
 from . import vit_seg_configs as configs
 from .vit_seg_modeling_resnet_skip import ResNetV2
 
+def pjoin(*parts: str) -> str:
+    joined = os.path.join(*parts)
+    return joined.replace('\\', '/')
 
 logger = logging.getLogger(__name__)
 

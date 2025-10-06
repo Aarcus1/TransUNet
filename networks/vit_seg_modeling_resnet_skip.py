@@ -1,11 +1,15 @@
 import math
 
-from os.path import join as pjoin
+import os
 from collections import OrderedDict
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+def pjoin(*parts: str) -> str:
+    joined = os.path.join(*parts)
+    return joined.replace('\\', '/')
 
 
 def np2th(weights, conv=False):

@@ -9,6 +9,11 @@ from networks.vit_seg_modeling import VisionTransformer as ViT_seg
 from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 from trainer import trainer_synapse
 
+
+torch.Tensor.cuda = lambda self, *args, **kwargs: self
+torch.nn.Module.cuda = lambda self, *args, **kwargs: self
+torch.device = lambda *args, **kwargs: torch.device('cpu')
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
                     default='../data/Synapse/train_npz', help='root dir for data')
@@ -19,11 +24,11 @@ parser.add_argument('--list_dir', type=str,
 parser.add_argument('--num_classes', type=int,
                     default=9, help='output channel of network')
 parser.add_argument('--max_iterations', type=int,
-                    default=30000, help='maximum epoch number to train')
+                    default=1, help='maximum epoch number to train')
 parser.add_argument('--max_epochs', type=int,
                     default=150, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int,
-                    default=24, help='batch_size per gpu')
+                    default=2, help='batch_size per gpu')
 parser.add_argument('--n_gpu', type=int, default=1, help='total gpu')
 parser.add_argument('--deterministic', type=int,  default=1,
                     help='whether use deterministic training')

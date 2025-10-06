@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from utils import DiceLoss
 from torchvision import transforms
+from torch.utils.data import Subset
 
 def trainer_synapse(args, model, snapshot_path):
     from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
@@ -33,7 +34,8 @@ def trainer_synapse(args, model, snapshot_path):
     def worker_init_fn(worker_id):
         random.seed(args.seed + worker_id)
 
-    trainloader = DataLoader(db_train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True,
+    train_set = Subset(db_train, range(50))
+    trainloader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True,
                              worker_init_fn=worker_init_fn)
     if args.n_gpu > 1:
         model = nn.DataParallel(model)
