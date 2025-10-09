@@ -15,8 +15,9 @@ from tqdm import tqdm
 from utils import DiceLoss
 from torchvision import transforms
 from datasets.dataset_breast_ultrasound import BreastUltrasoundDataset
+from torch.utils.data import Subset
 
-def trainer_synapse(args, model, snapshot_path):
+def trainer_synapse(args, model, snapshot_path, starting_epoch):
     from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
     logging.basicConfig(filename=snapshot_path + "/log.txt", level=logging.INFO,
                         format='[%(asctime)s.%(msecs)03d] %(message)s', datefmt='%H:%M:%S')
@@ -29,7 +30,7 @@ def trainer_synapse(args, model, snapshot_path):
     #db_train = Synapse_dataset(base_dir=args.root_path, list_dir=args.list_dir, split="train",
     #                           transform=transforms.Compose(
     #                               [RandomGenerator(output_size=[args.img_size, args.img_size])]))
-    db_train = BreastUltrasoundDataset(base_dir=args.root_path, list_dir=args.list_dir, split="train",
+    db_train = BreastUltrasoundDataset(base_dir=args.root_path, list_dir=args.list_dir, split="train", image_size=args.img_size,
                                transform=transforms.Compose(
                                    [RandomGenerator(output_size=[args.img_size, args.img_size])]))
     print("The length of train set is: {}".format(len(db_train)))
@@ -47,12 +48,12 @@ def trainer_synapse(args, model, snapshot_path):
     dice_loss = DiceLoss(num_classes)
     optimizer = optim.SGD(model.parameters(), lr=base_lr, momentum=0.9, weight_decay=0.0001)
     writer = SummaryWriter(snapshot_path + '/log')
-    iter_num = 0
+    iter_num = starting_epoch * len(trainloader)
     max_epoch = args.max_epochs
     max_iterations = args.max_epochs * len(trainloader)  # max_epoch = max_iterations // len(trainloader) + 1
     logging.info("{} iterations per epoch. {} max iterations ".format(len(trainloader), max_iterations))
     best_performance = 0.0
-    iterator = tqdm(range(max_epoch), ncols=70)
+    iterator = tqdm(range(starting_epoch + 1, max_epoch), ncols=70)
     for epoch_num in iterator:
         for i_batch, sampled_batch in enumerate(trainloader):
             image_batch, label_batch = sampled_batch['image'], sampled_batch['label']
@@ -84,15 +85,21 @@ def trainer_synapse(args, model, snapshot_path):
                 labs = label_batch[1, ...].unsqueeze(0) * 50
                 writer.add_image('train/GroundTruth', labs, iter_num)
 
-        save_interval = 50  # int(max_epoch/6)
-        if epoch_num > int(max_epoch / 2) and (epoch_num + 1) % save_interval == 0:
-            save_mode_path = os.path.join(snapshot_path, 'epoch_' + str(epoch_num) + '.pth')
-            torch.save(model.state_dict(), save_mode_path)
+        save_interval = 3  # int(max_epoch/6)
+        if (epoch_num + 1) % save_interval == 0:  # and epoch_num > int(max_epoch / 2) and
+            save_mode_path = os.path.join(snapshot_path, f'epoch_{epoch_num:08d}.pth')
+            torch.save({
+                'model': model.state_dict(),
+                'epoch': epoch_num
+            }, save_mode_path)
             logging.info("save model to {}".format(save_mode_path))
 
         if epoch_num >= max_epoch - 1:
-            save_mode_path = os.path.join(snapshot_path, 'epoch_' + str(epoch_num) + '.pth')
-            torch.save(model.state_dict(), save_mode_path)
+            save_mode_path = os.path.join(snapshot_path, f'epoch_{epoch_num:08d}.pth')
+            torch.save({
+                'model': model.state_dict(),
+                'epoch': epoch_num
+            }, save_mode_path)
             logging.info("save model to {}".format(save_mode_path))
             iterator.close()
             break

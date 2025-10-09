@@ -9,6 +9,7 @@ from networks.vit_seg_modeling import VisionTransformer as ViT_seg
 from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 from trainer import trainer_synapse
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
                     default='../data/BreastUltrasound/', help='root dir for data')
@@ -16,6 +17,8 @@ parser.add_argument('--dataset', type=str,
                     default='BreastUltrasound', help='experiment_name')
 parser.add_argument('--list_dir', type=str,
                     default='./lists/lists_breast_ultrasound', help='list dir')
+parser.add_argument('--model_path', type=str,
+                    default='../model', help='path for the model')
 parser.add_argument('--num_classes', type=int,
                     default=9, help='output channel of network')
 parser.add_argument('--max_iterations', type=int,
@@ -67,7 +70,7 @@ if __name__ == "__main__":
     args.list_dir = dataset_config[dataset_name]['list_dir']
     args.is_pretrain = True
     args.exp = 'TU_' + dataset_name + str(args.img_size)
-    snapshot_path = "../model/{}/{}".format(args.exp, 'TU')
+    snapshot_path = os.path.join(args.model_path, ".{}/{}".format(args.exp, 'TU'))
     snapshot_path = snapshot_path + '_pretrain' if args.is_pretrain else snapshot_path
     snapshot_path += '_' + args.vit_name
     snapshot_path = snapshot_path + '_skip' + str(args.n_skip)
@@ -79,15 +82,32 @@ if __name__ == "__main__":
     snapshot_path = snapshot_path + '_'+str(args.img_size)
     snapshot_path = snapshot_path + '_s'+str(args.seed) if args.seed!=1234 else snapshot_path
 
-    if not os.path.exists(snapshot_path):
-        os.makedirs(snapshot_path)
     config_vit = CONFIGS_ViT_seg[args.vit_name]
     config_vit.n_classes = args.num_classes
     config_vit.n_skip = args.n_skip
     if args.vit_name.find('R50') != -1:
         config_vit.patches.grid = (int(args.img_size / args.vit_patches_size), int(args.img_size / args.vit_patches_size))
     net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
-    net.load_from(weights=np.load(config_vit.pretrained_path))
+
+    if os.path.exists(snapshot_path):
+        checkpoint_files = sorted(
+            [f for f in os.listdir(snapshot_path) if f.startswith('epoch_') and f.endswith('.pth')]
+        )
+    else:
+        os.makedirs(snapshot_path)
+        checkpoint_files = []
+
+    if checkpoint_files:
+        latest_checkpoint = checkpoint_files[-1]
+        latest_path = os.path.join(snapshot_path, latest_checkpoint)
+        print(f"Found checkpoint: {latest_path} — resuming training.")
+        checkpoint = torch.load(latest_path)
+        net.load_state_dict(checkpoint['model'])
+        starting_epoch = checkpoint['epoch']
+    else:
+        print("No checkpoints found in directory — starting from pretrained weights.")
+        net.load_from(weights=np.load(config_vit.pretrained_path))
+        starting_epoch = 0
 
     trainer = {'BreastUltrasound': trainer_synapse,}
-    trainer[dataset_name](args, net, snapshot_path)
+    trainer[dataset_name](args, net, snapshot_path, starting_epoch)
