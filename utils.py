@@ -6,6 +6,9 @@ from medpy import metric
 from scipy.ndimage import zoom
 import torch.nn as nn
 import SimpleITK as sitk
+import os
+import imageio
+import numpy as np
 
 
 class DiceLoss(nn.Module):
@@ -59,6 +62,24 @@ def calculate_metric_percase(pred, gt):
     else:
         return 0, 0
 
+def save_predictions_as_png(image, prediction, label, case_name, save_dir):
+    os.makedirs(save_dir, exist_ok=True)
+
+    image_uint8 = (np.clip(image, 0, 1) * 255).astype(np.uint8)
+    pred_uint8 = (np.clip(prediction, 0, 1) * 255).astype(np.uint8)
+    label_uint8 = (np.clip(label, 0, 1) * 255).astype(np.uint8)
+
+    if image.ndim == 3:
+        num_slices = image.shape[0]
+        for i in range(num_slices):
+            imageio.imwrite(os.path.join(save_dir, f"{case_name}_img_{i:03d}.png"), image_uint8[i])
+            imageio.imwrite(os.path.join(save_dir, f"{case_name}_pred_{i:03d}.png"), pred_uint8[i])
+            imageio.imwrite(os.path.join(save_dir, f"{case_name}_gt_{i:03d}.png"), label_uint8[i])
+    else:
+        imageio.imwrite(os.path.join(save_dir, f"{case_name}_img.png"), image_uint8)
+        imageio.imwrite(os.path.join(save_dir, f"{case_name}_pred.png"), pred_uint8)
+        imageio.imwrite(os.path.join(save_dir, f"{case_name}_gt.png"), label_uint8)
+
 
 def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_save_path=None, case=None, z_spacing=1):
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
@@ -92,15 +113,7 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
         metric_list.append(calculate_metric_percase(prediction == i, label == i))
 
     if test_save_path is not None:
-        img_itk = sitk.GetImageFromArray(image.astype(np.float32))
-        prd_itk = sitk.GetImageFromArray(prediction.astype(np.float32))
-        lab_itk = sitk.GetImageFromArray(label.astype(np.float32))
-        img_itk.SetSpacing((1, 1, z_spacing))
-        prd_itk.SetSpacing((1, 1, z_spacing))
-        lab_itk.SetSpacing((1, 1, z_spacing))
-        sitk.WriteImage(prd_itk, test_save_path + '/'+case + "_pred.nii.gz")
-        sitk.WriteImage(img_itk, test_save_path + '/'+ case + "_img.nii.gz")
-        sitk.WriteImage(lab_itk, test_save_path + '/'+ case + "_gt.nii.gz")
+        save_predictions_as_png(image, prediction, label, case, test_save_path)
     return metric_list
 
 def get_snapshot_path(args):
