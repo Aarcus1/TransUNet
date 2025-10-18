@@ -17,7 +17,7 @@ from torchvision import transforms
 from datasets.dataset_breast_ultrasound import BreastUltrasoundDataset
 from torch.utils.data import Subset
 
-def trainer_synapse(args, model, snapshot_path, starting_epoch):
+def trainer_breast_ultrasound(args, model, snapshot_path, starting_epoch):
     from datasets.dataset_synapse import Synapse_dataset, RandomGenerator
     logging.basicConfig(filename=snapshot_path + "/log.txt", level=logging.INFO,
                         format='[%(asctime)s.%(msecs)03d] %(message)s', datefmt='%H:%M:%S')
@@ -26,7 +26,6 @@ def trainer_synapse(args, model, snapshot_path, starting_epoch):
     base_lr = args.base_lr
     num_classes = args.num_classes
     batch_size = args.batch_size * args.n_gpu
-    # max_iterations = args.max_iterations
     #db_train = Synapse_dataset(base_dir=args.root_path, list_dir=args.list_dir, split="train",
     #                           transform=transforms.Compose(
     #                               [RandomGenerator(output_size=[args.img_size, args.img_size])]))
@@ -50,7 +49,7 @@ def trainer_synapse(args, model, snapshot_path, starting_epoch):
     writer = SummaryWriter(snapshot_path + '/log')
     iter_num = starting_epoch * len(trainloader)
     max_epoch = args.max_epochs
-    max_iterations = args.max_epochs * len(trainloader)  # max_epoch = max_iterations // len(trainloader) + 1
+    max_iterations = args.max_epochs * len(trainloader)
     logging.info("{} iterations per epoch. {} max iterations ".format(len(trainloader), max_iterations))
     best_performance = 0.0
     iterator = tqdm(range(starting_epoch + 1, max_epoch), ncols=70)

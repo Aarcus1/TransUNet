@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import torch
 from medpy import metric
@@ -100,3 +102,19 @@ def test_single_volume(image, label, net, classes, patch_size=[256, 256], test_s
         sitk.WriteImage(img_itk, test_save_path + '/'+ case + "_img.nii.gz")
         sitk.WriteImage(lab_itk, test_save_path + '/'+ case + "_gt.nii.gz")
     return metric_list
+
+def get_snapshot_path(args):
+    snapshot_path = os.path.join(args.model_path, ".{}/{}".format(args.exp, 'TU'))
+    snapshot_path = snapshot_path + '_pretrain' if args.is_pretrain else snapshot_path
+    snapshot_path += '_' + args.vit_name
+    snapshot_path = snapshot_path + '_skip' + str(args.n_skip)
+    snapshot_path = snapshot_path + '_vitpatch' + str(
+        args.vit_patches_size) if args.vit_patches_size != 16 else snapshot_path
+    snapshot_path = snapshot_path + '_' + str(args.max_iterations)[
+                                          0:2] + 'k' if args.max_iterations != 30000 else snapshot_path
+    snapshot_path = snapshot_path + '_epo' + str(args.max_epochs) if args.max_epochs != 30 else snapshot_path
+    snapshot_path = snapshot_path + '_bs' + str(args.batch_size)
+    snapshot_path = snapshot_path + '_lr' + str(args.base_lr) if args.base_lr != 0.01 else snapshot_path
+    snapshot_path = snapshot_path + '_' + str(args.img_size)
+    snapshot_path = snapshot_path + '_s' + str(args.seed) if args.seed != 1234 else snapshot_path
+    return snapshot_path
